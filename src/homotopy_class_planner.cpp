@@ -370,7 +370,7 @@ TebOptimalPlannerPtr HomotopyClassPlanner::addAndInitNewTeb(const PoseSE2& start
     return TebOptimalPlannerPtr();
   TebOptimalPlannerPtr candidate =  TebOptimalPlannerPtr( new TebOptimalPlanner(*cfg_, obstacles_, robot_model_, visualization_));
 
-  candidate->teb().initTrajectoryToGoal(start, goal, 0, cfg_->robot.max_vel_x, cfg_->trajectory.min_samples, cfg_->trajectory.allow_init_with_backwards_motion);
+  candidate->teb().initTrajectoryToGoal(start, goal, 0, cfg_->robot.max_vel_x, cfg_->trajectory.min_samples, cfg_->trajectory.allow_init_with_backwards_motion, cfg_->robot.holonomic);
 
   if (start_velocity)
     candidate->setVelocityStart(*start_velocity);
@@ -379,7 +379,7 @@ TebOptimalPlannerPtr HomotopyClassPlanner::addAndInitNewTeb(const PoseSE2& start
                                                     candidate->teb().timediffs().begin(), candidate->teb().timediffs().end());
 
   if (free_goal_vel)
-    candidate->setVelocityGoalFree(); 
+    candidate->setVelocityGoalFree();
 
   if(addEquivalenceClassIfNew(H))
   {
@@ -426,7 +426,8 @@ TebOptimalPlannerPtr HomotopyClassPlanner::addAndInitNewTeb(const std::vector<ge
   TebOptimalPlannerPtr candidate = TebOptimalPlannerPtr( new TebOptimalPlanner(*cfg_, obstacles_, robot_model_, visualization_));
 
   candidate->teb().initTrajectoryToGoal(initial_plan, cfg_->robot.max_vel_x, cfg_->robot.max_vel_theta,
-    cfg_->trajectory.global_plan_overwrite_orientation, cfg_->trajectory.min_samples, cfg_->trajectory.allow_init_with_backwards_motion);
+    cfg_->trajectory.global_plan_overwrite_orientation, cfg_->trajectory.min_samples, cfg_->trajectory.allow_init_with_backwards_motion,
+    cfg_->robot.holonomic);
 
   if (start_velocity)
     candidate->setVelocityStart(*start_velocity);
