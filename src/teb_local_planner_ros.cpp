@@ -320,19 +320,12 @@ uint32_t TebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::PoseSt
   // Overwrite goal orientation if needed
   if (cfg_.trajectory.global_plan_overwrite_orientation)
   {
-    if(not cfg_.robot.holonomic)
-    {
-      robot_goal_.theta() = estimateLocalGoalOrientation(global_plan_, transformed_plan.back(), goal_idx, tf_plan_to_global);
-      tf2::Quaternion q;
-      q.setRPY(0, 0, robot_goal_.theta());
-      tf2::convert(q, transformed_plan.back().pose.orientation);
-    }
-    else
-    {
-      robot_goal_.theta() = tf2::getYaw(transformed_plan.back().pose.orientation);
-    }
+    ROS_WARN("ROBOT HEADING %f", robot_pose_.theta());
+    robot_goal_.theta() = estimateLocalGoalOrientation(global_plan_, transformed_plan.back(), goal_idx, tf_plan_to_global, cfg_.robot.holonomic, robot_pose_.theta());
     // overwrite/update goal orientation of the transformed plan with the actual goal (enable using the plan as initialization)
-
+    tf2::Quaternion q;
+    q.setRPY(0, 0, robot_goal_.theta());
+    tf2::convert(q, transformed_plan.back().pose.orientation);
   }
   else
   {
@@ -355,7 +348,7 @@ uint32_t TebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::PoseSt
   else
     updateObstacleContainerWithCostmap();
 
-  // also consider custom obstacles (must be called after other updates, since the container is not cleared)
+  // also consider custom obstacles (must be called after other up dates, since the container is not cleared)
   updateObstacleContainerWithCustomObstacles();
 
 
@@ -832,9 +825,11 @@ bool TebLocalPlannerROS::transformGlobalPlan(const tf2_ros::Buffer& tf, const st
 
 
 double TebLocalPlannerROS::estimateLocalGoalOrientation(const std::vector<geometry_msgs::PoseStamped>& global_plan, const geometry_msgs::PoseStamped& local_goal,
-              int current_goal_idx, const geometry_msgs::TransformStamped& tf_plan_to_global, int moving_average_length) const
+              int current_goal_idx, const geometry_msgs::TransformStamped& tf_plan_to_global, const bool holonomic, const double robot_theta, int moving_average_length) const
 {
   int n = (int)global_plan.size();
+
+  ROS_WARN("ROBOT THETA: %f", robot_theta);
 
   // check if we are near the global goal already
   if (current_goal_idx > n-moving_average_length-2)
@@ -854,27 +849,36 @@ double TebLocalPlannerROS::estimateLocalGoalOrientation(const std::vector<geomet
     }
   }
 
-  // reduce number of poses taken into account if the desired number of poses is not available
-  moving_average_length = std::min(moving_average_length, n-current_goal_idx-1 ); // maybe redundant, since we have checked the vicinity of the goal before
-
-  std::vector<double> candidates;
-  geometry_msgs::PoseStamped tf_pose_k = local_goal;
-  geometry_msgs::PoseStamped tf_pose_kp1;
-
-  int range_end = current_goal_idx + moving_average_length;
-  for (int i = current_goal_idx; i < range_end; ++i)
+  if(!holonomic)
   {
-    // Transform pose of the global plan to the planning frame
-    tf2::doTransform(global_plan.at(i+1), tf_pose_kp1, tf_plan_to_global);
+    // reduce number of poses taken into account if the desired number of poses is not available
+    moving_average_length = std::min(moving_average_length, n-current_goal_idx-1 ); // maybe redundant, since we have checked the vicinity of the goal before
 
-    // calculate yaw angle
-    candidates.push_back( std::atan2(tf_pose_kp1.pose.position.y - tf_pose_k.pose.position.y,
-        tf_pose_kp1.pose.position.x - tf_pose_k.pose.position.x ) );
+    std::vector<double> candidates;
+    geometry_msgs::PoseStamped tf_pose_k = local_goal;
+    geometry_msgs::PoseStamped tf_pose_kp1;
 
-    if (i<range_end-1)
-      tf_pose_k = tf_pose_kp1;
+    int range_end = current_goal_idx + moving_average_length;
+    for (int i = current_goal_idx; i < range_end; ++i)
+    {
+      // Transform pose of the global plan to the planning frame
+      tf2::doTransform(global_plan.at(i+1), tf_pose_kp1, tf_plan_to_global);
+
+      // calculate yaw angle
+      candidates.push_back( std::atan2(tf_pose_kp1.pose.position.y - tf_pose_k.pose.position.y,
+          tf_pose_kp1.pose.position.x - tf_pose_k.pose.position.x ) );
+
+      if (i<range_end-1)
+        tf_pose_k = tf_pose_kp1;
+    }
+    return average_angles(candidates);
   }
-  return average_angles(candidates);
+  else
+  {
+    ROS_WARN("RUNNING THIS");
+
+    return robot_theta;
+  }
 }
 
 
