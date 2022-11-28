@@ -210,8 +210,6 @@ bool TebLocalPlannerROS::setPlan(const std::vector<geometry_msgs::PoseStamped>& 
   global_plan_.clear();
   global_plan_ = orig_global_plan;
 
-  ROS_WARN("SETTING NEW GLOBAL PLAN");
-
   // we do not clear the local planner here, since setPlan is called frequently whenever the global planner updates the plan.
   // the local planner checks whether it is required to reinitialize the trajectory or not within each velocity computation step.
 
@@ -320,7 +318,7 @@ uint32_t TebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::PoseSt
   // Overwrite goal orientation if needed
   if (cfg_.trajectory.global_plan_overwrite_orientation)
   {
-    ROS_WARN("ROBOT HEADING %f", robot_pose_.theta());
+    // ROS_WARN("ROBOT HEADING %f", robot_pose_.theta());
     robot_goal_.theta() = estimateLocalGoalOrientation(global_plan_, transformed_plan.back(), goal_idx, tf_plan_to_global, cfg_.robot.holonomic, robot_pose_.theta());
     // overwrite/update goal orientation of the transformed plan with the actual goal (enable using the plan as initialization)
     tf2::Quaternion q;
@@ -829,7 +827,7 @@ double TebLocalPlannerROS::estimateLocalGoalOrientation(const std::vector<geomet
 {
   int n = (int)global_plan.size();
 
-  ROS_WARN("ROBOT THETA: %f", robot_theta);
+//   ROS_WARN("ROBOT THETA: %f", robot_theta);
 
   // check if we are near the global goal already
   if (current_goal_idx > n-moving_average_length-2)
